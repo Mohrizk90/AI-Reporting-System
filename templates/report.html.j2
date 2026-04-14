@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{% if report.paid_ads_report %}{{ report.paid_ads_report.document.report_title }}{% elif report.email_report %}{{ report.email_report.document.report_title }}{% else %}Report{% endif %} — {{ report.meta.client_name }}</title>
+  <style>
+    :root {
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --border: #d8d8d8;
+      --thead: #ececec;
+      --scope-bg: #f5f5f5;
+      --accent: #2c2c2c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 1.75rem 1.25rem 3rem;
+      color: var(--text);
+      line-height: 1.5;
+      font-size: 15px;
+    }
+    .doc-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--accent); }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem 0;
+      color: var(--accent);
+    }
+    .subtitle { font-size: 1.05rem; color: #333; margin: 0 0 0.5rem 0; font-weight: 500; }
+    .header-line { font-size: 0.95rem; color: #333; margin: 0; }
+    .meta-line { font-size: 0.85rem; color: var(--muted); margin: 0.75rem 0 0 0; }
+    .product-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-top: 0.35rem;
+    }
+
+    h2 {
+      font-size: 1.12rem;
+      font-weight: 700;
+      margin: 2rem 0 0.75rem 0;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+    }
+    h3 {
+      font-size: 0.98rem;
+      font-weight: 600;
+      margin: 1.35rem 0 0.5rem 0;
+      color: #222;
+    }
+
+    .scope-box {
+      background: var(--scope-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1rem 1.1rem;
+      margin: 1.25rem 0 1.75rem;
+      font-size: 0.9rem;
+    }
+    .scope-box strong.title { display: block; margin-bottom: 0.35rem; color: var(--accent); }
+    .scope-box ul { margin: 0.35rem 0 0 1.1rem; padding: 0; }
+    .scope-box li { margin-bottom: 0.35rem; }
+
+    .executive {
+      background: #fafafa;
+      border-left: 4px solid var(--accent);
+      padding: 0.9rem 1rem;
+      margin: 1rem 0 1.25rem;
+      font-size: 0.95rem;
+    }
+    .executive h3 { margin-top: 0; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+
+    .muted { color: var(--muted); font-size: 0.88rem; }
+    .excluded { color: #444; font-style: italic; }
+    .footnote { font-size: 0.86rem; color: #444; margin-top: 0.65rem; line-height: 1.45; }
+
+    table.data {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 0.65rem 0 1rem;
+      font-size: 0.88rem;
+    }
+    table.data th, table.data td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.55rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.data th {
+      background: var(--thead);
+      font-weight: 600;
+      font-size: 0.82rem;
+    }
+    table.data tr:nth-child(even) td { background: #fcfcfc; }
+    table.data .total-row th, table.data .total-row td {
+      background: #e8e8e8;
+      font-weight: 600;
+    }
+
+    section { page-break-inside: avoid; }
+
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    @media print {
+      body { padding: 0.5in; font-size: 11pt; max-width: 100%; }
+      .scope-box { break-inside: avoid; }
+      h2 { break-after: avoid; }
+      table.data { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+
+{% if report.paid_ads_report %}
+{% set pad = report.paid_ads_report %}
+{% set doc = pad.document %}
+
+  <header class="doc-header">
+    <h1>{{ doc.report_title }}</h1>
+    <p class="subtitle">{{ doc.report_subtitle }}</p>
+    <p class="header-line">{{ doc.header_line }}</p>
+    {% if doc.product %}<p class="product-tag">{{ doc.product }}</p>{% endif %}
+    <p class="meta-line">Client: {{ report.meta.client_name }} ({{ report.meta.client_id }}) · Source: {{ report.meta.source_path or '—' }}</p>
+  </header>
+
+  <div class="scope-box">
+    <strong class="title">Supported in this run</strong>
+    <ul>
+      {% for s in report.scope.supported_now %}
+      <li><strong>{{ s.channel }}</strong> — {{ s.description }}</li>
+      {% endfor %}
+    </ul>
+    <strong class="title" style="margin-top:0.85rem;">Intentionally out of scope (this MVP)</strong>
+    <ul>
+      {% for s in report.scope.not_implemented %}
+      <li><strong>{{ s.channel }}</strong> — {{ s.reason }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <section>
+    <h2>{{ pad.section_1_report_overview.title }}</h2>
+    <p>{{ pad.section_1_report_overview.intro }}</p>
+
+    <div class="executive">
+      <h3>Executive summary</h3>
+      <p style="margin:0;">{{ pad.section_1_report_overview.executive_summary }}</p>
+    </div>
+
+    {% set oh = pad.section_1_report_overview.overview_table_headers or ["Metric", "Value"] %}
+    <table class="data">
+      <tr><th>{{ oh[0] }}</th><th>{{ oh[1] }}</th></tr>
+      {% for row in pad.section_1_report_overview.overview_table %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td>{{ row.value }}{% if row.note %} <span class="muted">({{ row.note }})</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <section>
+    <h2>{{ pad.section_2_facebook_meta_ads.title }}</h2>
+
+    <h3>{{ pad.section_2_facebook_meta_ads.subsection_2_1_core_kpis.title }}</h3>
+    <table class="data">
+      <tr>
+        {% for h in pad.section_2_facebook_meta_ads.subsection_2_1_core_kpis.column_headers %}
+        <th>{{ h }}</th>
+        {% endfor %}
+      </tr>
+      {% for r in pad.section_2_facebook_meta_ads.subsection_2_1_core_kpis.rows %}
+      <tr>
+        <td>{{ r.metric }}</td>
+        <td>{{ r.what_it_measures }}</td>
+        <td>{{ r.period_value }}{% if r.notes %}<br/><span class="muted">{{ r.notes }}</span>{% endif %}</td>
+        <td>{{ r.benchmark_target }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <h3>{{ pad.section_2_facebook_meta_ads.subsection_2_2_creative_engagement.title }}</h3>
+    <p>{{ pad.section_2_facebook_meta_ads.subsection_2_2_creative_engagement.intro }}</p>
+    <p class="excluded"><strong>{{ pad.section_2_facebook_meta_ads.subsection_2_2_creative_engagement.status_label }}.</strong>
+      {{ pad.section_2_facebook_meta_ads.subsection_2_2_creative_engagement.explanation }}</p>
+
+    <h3>{{ pad.section_2_facebook_meta_ads.subsection_2_3_campaign_breakdown.title }}</h3>
+    <p class="muted">{{ pad.section_2_facebook_meta_ads.subsection_2_3_campaign_breakdown.instruction }}</p>
+    <table class="data">
+      <tr>
+        <th>Campaign name</th>
+        <th>Objective / event</th>
+        <th>Spend ({{ report.meta.currency }})</th>
+        <th>Impressions</th>
+        <th>Clicks / results</th>
+        <th>CTR (link)</th>
+        <th>CPC</th>
+        <th>CPM</th>
+      </tr>
+      {% for c in pad.section_2_facebook_meta_ads.subsection_2_3_campaign_breakdown.campaigns %}
+      <tr>
+        <td>{{ c.campaign_name }}</td>
+        <td>{{ c.objective }}</td>
+        <td>{{ c.spend_display }}</td>
+        <td>{{ c.impressions_display }}</td>
+        <td>{{ c.clicks_label }}: {{ c.clicks_or_results }}</td>
+        <td>{{ c.ctr_display }}</td>
+        <td>{{ c.cpc_display }}</td>
+        <td>{{ c.cpm_display }}</td>
+      </tr>
+      {% endfor %}
+      {% set tr = pad.section_2_facebook_meta_ads.subsection_2_3_campaign_breakdown.total_row %}
+      <tr class="total-row">
+        <th>TOTAL</th>
+        <th>—</th>
+        <td>{{ tr.spend_display }}</td>
+        <td>{{ tr.impressions_display }}</td>
+        <td>—</td>
+        <td>{{ tr.ctr_display }}</td>
+        <td>{{ tr.cpc_display }}</td>
+        <td>{{ tr.cpm_display }}</td>
+      </tr>
+    </table>
+    <p class="footnote">{{ pad.section_2_facebook_meta_ads.subsection_2_3_campaign_breakdown.footnote }}</p>
+  </section>
+
+  <section>
+    <h2>{{ pad.section_3_google_ads.title }}</h2>
+    <p class="excluded"><strong>{{ pad.section_3_google_ads.status_label }}.</strong> {{ pad.section_3_google_ads.reason }}</p>
+  </section>
+
+  <section>
+    <h2>{{ pad.section_4_key_benchmarks.title }}</h2>
+    <p class="muted">{{ pad.section_4_key_benchmarks.intro }}</p>
+    <table class="data">
+      <tr><th>Context</th><th>Metric</th><th>Target (reference)</th></tr>
+      {% for br in pad.section_4_key_benchmarks.reference_rows %}
+      <tr><td>{{ br.context }}</td><td>{{ br.metric }}</td><td>{{ br.target }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <section>
+    <h2>{{ pad.section_5_insights_and_recommendations.title }}</h2>
+    <p class="muted">{{ pad.section_5_insights_and_recommendations.instruction }}</p>
+
+    <h3>{{ pad.section_5_insights_and_recommendations.section_5_1_facebook_ads_summary.title }}</h3>
+    <p>{{ pad.section_5_insights_and_recommendations.section_5_1_facebook_ads_summary.body }}</p>
+
+    <h3>{{ pad.section_5_insights_and_recommendations.section_5_2_google_ads_summary.title }}</h3>
+    <p class="excluded">{{ pad.section_5_insights_and_recommendations.section_5_2_google_ads_summary.body }}</p>
+
+    <h3>{{ pad.section_5_insights_and_recommendations.section_5_3_recommended_actions.title }}</h3>
+    <ol>
+      {% for a in pad.section_5_insights_and_recommendations.section_5_3_recommended_actions.action_items %}
+      <li>{{ a }}</li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  {% if report.insights.caveats %}
+  <h2>Model caveats</h2>
+  <ul>{% for c in report.insights.caveats %}<li>{{ c }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if report.ingestion.warnings %}
+  <h2>Data notes</h2>
+  <ul>{% for w in report.ingestion.warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  <footer>
+    {{ doc.footer_attribution }}<br/>
+    Generated {{ report.meta.generated_at }} · Schema {{ report.meta.schema_version }}
+  </footer>
+{% elif report.email_report %}
+{% set em = report.email_report %}
+{% set doc = em.document %}
+
+  <header class="doc-header">
+    <h1>{{ doc.report_title }}</h1>
+    <p class="subtitle">{{ doc.report_subtitle }}</p>
+    <p class="header-line">{{ doc.header_line }}</p>
+    <p class="meta-line">Client: {{ report.meta.client_name }} ({{ report.meta.client_id }})</p>
+  </header>
+
+  <section>
+    <h2>Topline</h2>
+    <table class="data">
+      <tr><th>Metric</th><th>Value</th></tr>
+      {% for r in em.section_0_topline_table %}
+      <tr><td>{{ r.label }}</td><td>{{ r.value }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <section>
+    <h2>{{ em.section_1_report_overview.title }}</h2>
+    <p>{{ em.section_1_report_overview.body }}</p>
+  </section>
+
+  <section>
+    <h2>{{ em.section_2_list_health.title }}</h2>
+    <p class="excluded"><strong>{{ em.section_2_list_health.status_label }}.</strong> {{ em.section_2_list_health.explanation }}</p>
+  </section>
+
+  <section>
+    <h2>{{ em.section_3_core_kpis.title }}</h2>
+    <table class="data">
+      <tr><th>Metric</th><th>How it is calculated</th><th>Value</th><th>Benchmark / Target</th></tr>
+      {% for r in em.section_3_core_kpis.rows %}
+      <tr><td>{{ r.metric }}</td><td>{{ r.how_calculated }}</td><td>{{ r.value }}</td><td>{{ r.benchmark }}</td></tr>
+      {% endfor %}
+    </table>
+  </section>
+
+  <section>
+    <h2>{{ em.section_4_campaign_breakdown.title }}</h2>
+    <h3>{{ em.section_4_campaign_breakdown.subsection_4_1_broadcast.title }}</h3>
+    <table class="data">
+      <tr><th>Campaign</th><th>Sent</th><th>Open rate</th><th>CTR</th><th>CTOR</th><th>Unsubs</th></tr>
+      {% for r in em.section_4_campaign_breakdown.subsection_4_1_broadcast.rows %}
+      <tr>
+        <td>{{ r.campaign_name }}</td>
+        <td>{{ r.sent if r.sent is not none else '—' }}</td>
+        <td>{% if r.open_rate_pct is not none %}{{ '%.2f'|format(r.open_rate_pct) }}%{% else %}—{% endif %}</td>
+        <td>{% if r.ctr_pct is not none %}{{ '%.2f'|format(r.ctr_pct) }}%{% else %}—{% endif %}</td>
+        <td>{% if r.ctor_pct is not none %}{{ '%.2f'|format(r.ctor_pct) }}%{% else %}—{% endif %}</td>
+        <td>{{ r.unsubs if r.unsubs is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <p class="muted">{{ em.section_4_campaign_breakdown.note }}</p>
+  </section>
+
+  <section>
+    <h2>{{ em.section_9_insights_and_recommendations.title }}</h2>
+    <h3>9.1 Newsletter / Broadcast Summary</h3>
+    <p>{{ em.section_9_insights_and_recommendations.newsletter_broadcast_summary }}</p>
+    <h3>9.4 Recommended Actions</h3>
+    <ol>
+      {% for a in em.section_9_insights_and_recommendations.recommended_actions %}
+      <li>{{ a }}</li>
+      {% endfor %}
+    </ol>
+    {% if em.section_9_insights_and_recommendations.caveats %}
+    <h3>Caveats</h3>
+    <ul>{% for c in em.section_9_insights_and_recommendations.caveats %}<li>{{ c }}</li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+
+  <footer>
+    {{ doc.prepared_by }}<br/>
+    Generated {{ doc.generated_at }} · Schema {{ report.meta.schema_version }}
+  </footer>
+
+{% else %}
+  <pre>{{ report|tojson }}</pre>
+{% endif %}
+</body>
+</html>
