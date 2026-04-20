@@ -14,12 +14,14 @@ from datetime import date
 
 from mvp.ai_insights import generate_ai_insights, normalize_ai_block
 from mvp.formatters import write_outputs
+from mvp.google_search_console import get_credentials, search_analytics_query, token_path
 from mvp.ingest import normalize_meta_export
 from mvp.kpis import compute_aggregate_kpis
 from mvp.report_model import build_report_payload
 from mvp.email_ingest_brevo import ingest_brevo_email_campaigns
 from mvp.email_ingest_excel import ingest_email_excel_export
 from mvp.email_report_model import build_email_report_payload
+from mvp.seo_gsc_report import build_gsc_seo_snapshot
 
 
 def run_pipeline(
@@ -46,6 +48,38 @@ def run_pipeline(
     )
     kpis = compute_aggregate_kpis(ds)
 
+    # Optional: attach SEO snapshot from Google Search Console if token + site are available.
+    gsc_site = os.environ.get("GOOGLE_SEARCH_CONSOLE_SITE", "").strip()
+    seo_snapshot = None
+    if gsc_site and token_path().exists():
+        # Use Meta export reporting window to align the month/period across channels.
+        ps = ds.rows[0].reporting_starts if ds.rows else date.today().replace(day=1)
+        pe = ds.rows[0].reporting_ends if ds.rows else date.today()
+        creds = get_credentials()
+        q = search_analytics_query(
+            creds,
+            gsc_site,
+            start_date=ps,
+            end_date=pe,
+            dimensions=["query"],
+            row_limit=25,
+        )
+        p = search_analytics_query(
+            creds,
+            gsc_site,
+            start_date=ps,
+            end_date=pe,
+            dimensions=["page"],
+            row_limit=25,
+        )
+        seo_snapshot = build_gsc_seo_snapshot(
+            site_url=gsc_site,
+            start_date=ps,
+            end_date=pe,
+            query_rows=list(q.get("rows", []) or []),
+            page_rows=list(p.get("rows", []) or []),
+        ).to_dict()
+
     if skip_ai:
         ai_raw = {
             "summary": (
@@ -66,7 +100,7 @@ def run_pipeline(
 
     ai_block = normalize_ai_block(ai_raw)
 
-    report = build_report_payload(ds, kpis, ai_block=ai_block)
+    report = build_report_payload(ds, kpis, ai_block=ai_block, seo_search_console=seo_snapshot)
     paths = write_outputs(report, output_dir, base_name=base_name)
 
     return {"report": report, "output_paths": paths, "dataset": ds.to_dict()}
@@ -126,5 +160,32 @@ def run_email_pipeline(
         raise ValueError("Email source must be one of: excel, brevo")
 
     report = build_email_report_payload(ds=ds, skip_ai=skip_ai)
+    # Optional: same period SEO snapshot (aligns to email runner period window).
+    gsc_site = os.environ.get("GOOGLE_SEARCH_CONSOLE_SITE", "").strip()
+    if gsc_site and token_path().exists():
+        creds = get_credentials()
+        q = search_analytics_query(
+            creds,
+            gsc_site,
+            start_date=ps,
+            end_date=pe,
+            dimensions=["query"],
+            row_limit=25,
+        )
+        p = search_analytics_query(
+            creds,
+            gsc_site,
+            start_date=ps,
+            end_date=pe,
+            dimensions=["page"],
+            row_limit=25,
+        )
+        report["seo_search_console"] = build_gsc_seo_snapshot(
+            site_url=gsc_site,
+            start_date=ps,
+            end_date=pe,
+            query_rows=list(q.get("rows", []) or []),
+            page_rows=list(p.get("rows", []) or []),
+        ).to_dict()
     paths = write_outputs(report, out, base_name="report")
     return {"report": report, "output_paths": paths, "dataset": ds.to_dict()}

@@ -2,7 +2,7 @@
 
 **Purpose:** Single reference for what was discovered in the project `Files` folder, agreed MVP boundaries, and implementation contracts. Update this file when inputs, scope, or schema change.
 
-**Last updated:** 2026-04-11  
+**Last updated:** 2026-04-19  
 **Analyzed path:** `Files/` (contents as of analysis date)
 
 ---
@@ -117,6 +117,20 @@ Reusable structure:
 - Live API connectors.
 - Full multi-channel dashboard.
 - **ROAS / revenue** — not present in provided Meta exports; template fields that require revenue stay empty or “N/A” with disclaimer.
+
+### 5.1 Monthly report — target data sources (product contract)
+
+Full monthly marketing reporting is designed to draw from the integrations listed in `mvp/monthly_report_sources.py`. Each generated report JSON includes **`monthly_report_data_sources`** (same content in Paid Ads and Email payloads) so stakeholders see the intended stack alongside **`scope`** (what this run actually ingested).
+
+| Source | Role |
+|--------|------|
+| Meta Marketing API | Facebook/Instagram paid media |
+| Meta Pages / Instagram APIs | Page/account-level social metrics where applicable |
+| Google Ads API | Google Ads performance |
+| Google Search Console API | SEO / organic search performance |
+| LinkedIn Marketing APIs | Ads, reporting, page-related data (subject to access) |
+| Brevo API | Email |
+| CSV/Excel import | Fallback when API access is delayed |
 
 ---
 

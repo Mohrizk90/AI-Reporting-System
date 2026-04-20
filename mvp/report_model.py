@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from mvp.kpis import AggregateKPIs, compute_aggregate_kpis
+from mvp.monthly_report_sources import build_monthly_report_data_sources_payload
 from mvp.paid_ads_template import build_paid_ads_template_report
 from mvp.schema import NormalizedDataset
 
@@ -14,6 +15,7 @@ def build_report_payload(
     ds: NormalizedDataset,
     kpis: AggregateKPIs | None = None,
     ai_block: dict[str, Any] | None = None,
+    seo_search_console: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Primary output: `paid_ads_report` mirrors Ads_Report_Template.docx.pdf sections.
@@ -36,6 +38,7 @@ def build_report_payload(
             "prepared_by": "Pedicel Marketing",
             "template_id": "Ads_Report_Template.docx.pdf",
         },
+        "monthly_report_data_sources": build_monthly_report_data_sources_payload(),
         "scope": {
             "supported_now": [
                 {
@@ -71,6 +74,7 @@ def build_report_payload(
             "row_count": len(ds.rows),
         },
         "paid_ads_report": paid,
+        "seo_search_console": seo_search_console,
         # Compatibility / LLM hooks (dashboards may read these keys)
         "insights": {
             "summary": ai.get("summary"),

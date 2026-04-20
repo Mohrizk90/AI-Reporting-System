@@ -11,7 +11,131 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
+def _lines_monthly_report_data_sources_text(report: dict[str, Any]) -> list[str]:
+    b = report.get("monthly_report_data_sources")
+    if not b:
+        return []
+    out: list[str] = [
+        "--- Monthly report: target data sources ---",
+        "",
+    ]
+    for s in b.get("sources", []):
+        out.append(f"  • {s.get('name', '')}: {s.get('purpose', '')}")
+    fn = b.get("fallback_note")
+    if fn:
+        out.extend(["", f"  {fn}"])
+    out.append("")
+    return out
+
+
+def _lines_monthly_report_data_sources_markdown(report: dict[str, Any]) -> list[str]:
+    b = report.get("monthly_report_data_sources")
+    if not b:
+        return []
+    lines: list[str] = ["## Monthly report — target data sources", ""]
+    for s in b.get("sources", []):
+        lines.append(f"- **{s.get('name', '')}:** {s.get('purpose', '')}")
+    if b.get("fallback_note"):
+        lines.extend(["", f"*{b['fallback_note']}*"])
+    lines.append("")
+    return lines
+
+
+def _lines_gsc_seo_text(report: dict[str, Any]) -> list[str]:
+    seo = report.get("seo_search_console")
+    if not seo:
+        return []
+    out: list[str] = [
+        "--- SEO (Google Search Console) ---",
+        f"  Property: {seo.get('site_url')}",
+        f"  Period: {seo.get('start_date')} to {seo.get('end_date')}",
+    ]
+    if seo.get("error"):
+        out.append(f"  Error: {seo.get('error')}")
+        out.append("")
+        return out
+    totals = seo.get("totals") or {}
+    if totals:
+        out.append(
+            "  Totals: "
+            f"clicks={totals.get('clicks')} "
+            f"impressions={totals.get('impressions')} "
+            f"ctr={totals.get('ctr')} "
+            f"position={totals.get('position')}"
+        )
+    tq = seo.get("top_queries") or []
+    if tq:
+        out.append("  Top queries:")
+        for r in tq[:10]:
+            k = (r.get("keys") or ["—"])[0]
+            out.append(
+                f"    - {k} | clicks={r.get('clicks')} | impressions={r.get('impressions')} | "
+                f"ctr={r.get('ctr')} | pos={r.get('position')}"
+            )
+    tp = seo.get("top_pages") or []
+    if tp:
+        out.append("  Top pages:")
+        for r in tp[:10]:
+            k = (r.get("keys") or ["—"])[0]
+            out.append(
+                f"    - {k} | clicks={r.get('clicks')} | impressions={r.get('impressions')} | "
+                f"ctr={r.get('ctr')} | pos={r.get('position')}"
+            )
+    out.append("")
+    return out
+
+
+def _lines_gsc_seo_markdown(report: dict[str, Any]) -> list[str]:
+    seo = report.get("seo_search_console")
+    if not seo:
+        return []
+    lines: list[str] = [
+        "## SEO — Google Search Console",
+        "",
+        f"- **Property:** `{seo.get('site_url')}`",
+        f"- **Period:** {seo.get('start_date')} to {seo.get('end_date')}",
+    ]
+    if seo.get("error"):
+        lines.extend(["", f"**Error:** {seo.get('error')}", ""])
+        return lines
+    totals = seo.get("totals") or {}
+    if totals:
+        lines.extend(
+            [
+                "",
+                "### Totals",
+                f"- **Clicks:** {totals.get('clicks')}",
+                f"- **Impressions:** {totals.get('impressions')}",
+                f"- **CTR:** {totals.get('ctr')}",
+                f"- **Avg position (impression-weighted):** {totals.get('position')}",
+            ]
+        )
+    tq = seo.get("top_queries") or []
+    if tq:
+        lines.extend(["", "### Top queries (sample)", ""])
+        for r in tq[:10]:
+            q = (r.get("keys") or ["—"])[0]
+            lines.append(
+                f"- **{q}** — clicks: {r.get('clicks')} · impressions: {r.get('impressions')} · "
+                f"ctr: {r.get('ctr')} · pos: {r.get('position')}"
+            )
+    tp = seo.get("top_pages") or []
+    if tp:
+        lines.extend(["", "### Top pages (sample)", ""])
+        for r in tp[:10]:
+            p = (r.get("keys") or ["—"])[0]
+            lines.append(
+                f"- `{p}` — clicks: {r.get('clicks')} · impressions: {r.get('impressions')} · "
+                f"ctr: {r.get('ctr')} · pos: {r.get('position')}"
+            )
+    lines.append("")
+    return lines
+
+
 def report_to_text(report: dict[str, Any]) -> str:
+    mon = report.get("monthly_report")
+    if mon:
+        return _text_from_monthly_report(report, mon)
     pad = report.get("paid_ads_report")
     if pad:
         return _text_from_paid_ads_template(report, pad)
@@ -33,6 +157,8 @@ def _text_from_email_template(report: dict[str, Any], em: dict[str, Any]) -> str
     lines.append(doc["report_subtitle"])
     lines.append(doc["header_line"])
     lines.append("")
+    lines.extend(_lines_monthly_report_data_sources_text(report))
+    lines.extend(_lines_gsc_seo_text(report))
 
     # topline
     lines.append("Topline (template header table)")
@@ -109,6 +235,8 @@ def _text_from_paid_ads_template(report: dict[str, Any], pad: dict[str, Any]) ->
     lines.append(doc.get("report_subtitle", ""))
     lines.append(doc.get("header_line", ""))
     lines.append("")
+    lines.extend(_lines_monthly_report_data_sources_text(report))
+    lines.extend(_lines_gsc_seo_text(report))
     lines.append("--- MVP scope: supported ---")
     for s in scope.get("supported_now", []):
         lines.append(f"  • {s.get('channel')}: {s.get('description')}")
@@ -234,6 +362,9 @@ def report_to_html(report: dict[str, Any], template_dir: Path, template_name: st
 
 
 def report_to_markdown(report: dict[str, Any]) -> str:
+    mon = report.get("monthly_report")
+    if mon:
+        return _md_from_monthly_report(report, mon)
     pad = report.get("paid_ads_report")
     if not pad:
         em = report.get("email_report")
@@ -249,9 +380,15 @@ def report_to_markdown(report: dict[str, Any]) -> str:
         "",
         doc["header_line"],
         "",
+    ]
+    lines.extend(_lines_monthly_report_data_sources_markdown(report))
+    lines.extend(_lines_gsc_seo_markdown(report))
+    lines.extend(
+        [
         "## Scope",
         "### Supported now",
-    ]
+        ]
+    )
     for s in report.get("scope", {}).get("supported_now", []):
         lines.append(f"- **{s['channel']}:** {s['description']}")
     lines.extend(["", "### Intentionally out of scope (this MVP)", ""])
@@ -371,8 +508,14 @@ def _md_from_email_template(report: dict[str, Any], em: dict[str, Any]) -> str:
         "",
         doc["header_line"],
         "",
-        "## Topline",
     ]
+    lines.extend(_lines_monthly_report_data_sources_markdown(report))
+    lines.extend(_lines_gsc_seo_markdown(report))
+    lines.extend(
+        [
+        "## Topline",
+        ]
+    )
     for r in em.get("section_0_topline_table", []):
         lines.append(f"- **{r['label']}:** {r['value']}")
 
@@ -414,6 +557,151 @@ def _md_from_email_template(report: dict[str, Any], em: dict[str, Any]) -> str:
         lines.extend(["", "### Caveats", ""])
         for c in s9["caveats"]:
             lines.append(f"- {c}")
+    return "\n".join(lines)
+
+
+def _text_from_monthly_report(report: dict[str, Any], mon: dict[str, Any]) -> str:
+    meta = report.get("meta", {})
+    lines: list[str] = []
+    lines.append(mon.get("title", "Monthly Marketing Report"))
+    sub = mon.get("subtitle")
+    if sub:
+        lines.append(sub)
+    lines.append(f"Generated: {meta.get('generated_at')}")
+    lines.append("")
+    lines.extend(_lines_monthly_report_data_sources_text(report))
+    if mon.get("connected_sources"):
+        lines.append("--- Connected in this run ---")
+        for s in mon["connected_sources"]:
+            lines.append(f"  • {s.get('name')}: {s.get('purpose')}")
+        lines.append("")
+
+    clients = mon.get("clients", []) or []
+    for c in clients:
+        lines.append(f"=== Client: {c.get('client_name')} ({c.get('client_id')}) ===")
+        seo = c.get("seo_search_console")
+        if seo:
+            # Reuse helper by wrapping into a report-like dict
+            lines.extend(_lines_gsc_seo_text({"seo_search_console": seo}))
+        pad = c.get("paid_ads_report")
+        if pad:
+            # Minimal paid-ads excerpt for combined run
+            doc = pad.get("document", {})
+            lines.append(doc.get("report_title", "Paid Ads Performance Report"))
+            s1 = pad.get("section_1_report_overview", {})
+            if s1.get("executive_summary"):
+                lines.append("Executive summary")
+                lines.append(s1["executive_summary"])
+                lines.append("")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _md_from_monthly_report(report: dict[str, Any], mon: dict[str, Any]) -> str:
+    meta = report.get("meta", {})
+    lines: list[str] = [
+        f"# {mon.get('title', 'Monthly Marketing Report')}",
+        "",
+    ]
+    if mon.get("subtitle"):
+        lines.append(f"*{mon['subtitle']}*")
+        lines.append("")
+    if meta.get("generated_at"):
+        lines.append(f"*Generated {meta['generated_at']}*")
+        lines.append("")
+
+    lines.extend(_lines_monthly_report_data_sources_markdown(report))
+    if mon.get("connected_sources"):
+        lines.extend(["## Connected in this run", ""])
+        for s in mon["connected_sources"]:
+            lines.append(f"- **{s.get('name')}:** {s.get('purpose')}")
+        lines.append("")
+
+    for c in mon.get("clients", []) or []:
+        lines.extend(
+            [
+                "",
+                f"## Client — {c.get('client_name')} ({c.get('client_id')})",
+                "",
+            ]
+        )
+        seo = c.get("seo_search_console")
+        if seo:
+            lines.extend(_lines_gsc_seo_markdown({"seo_search_console": seo}))
+        pad = c.get("paid_ads_report")
+        if pad:
+            lines.extend(["## Paid ads — Meta export", ""])
+
+            s1 = pad.get("section_1_report_overview", {})
+            if s1.get("executive_summary"):
+                lines.extend(["### Executive summary", "", s1["executive_summary"], ""])
+
+            s2 = pad.get("section_2_facebook_meta_ads", {}) or {}
+
+            # 2.1 Core KPIs (full table)
+            core = (s2.get("subsection_2_1_core_kpis") or {})
+            if core.get("rows"):
+                lines.extend(["### 2.1 Core KPIs", ""])
+                lines.append("| Metric | What it measures | Period value | Benchmark / target |")
+                lines.append("| --- | --- | --- | --- |")
+                for r in core["rows"]:
+                    note = f" ({r.get('notes')})" if r.get("notes") else ""
+                    lines.append(
+                        f"| {r.get('metric')} | {r.get('what_it_measures')} | {r.get('period_value')}{note} | {r.get('benchmark_target')} |"
+                    )
+                lines.append("")
+
+            # 2.3 Campaign breakdown (full table)
+            cb = (s2.get("subsection_2_3_campaign_breakdown") or {})
+            if cb.get("campaigns"):
+                lines.extend(["### 2.3 Campaign Breakdown", ""])
+                lines.append("| Campaign | Objective | Spend | Impressions | Clicks/Results | CTR | CPC | CPM |")
+                lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
+                for row in cb["campaigns"]:
+                    lines.append(
+                        f"| {row.get('campaign_name')} | {row.get('objective')} | {row.get('spend_display')} | "
+                        f"{row.get('impressions_display')} | {row.get('clicks_label')}={row.get('clicks_or_results')} | "
+                        f"{row.get('ctr_display') or '—'} | {row.get('cpc_display') or '—'} | {row.get('cpm_display') or '—'} |"
+                    )
+                tr = cb.get("total_row") or {}
+                if tr:
+                    lines.append(
+                        f"| **TOTAL** | — | {tr.get('spend_display')} | {tr.get('impressions_display')} | — | "
+                        f"{tr.get('ctr_display') or '—'} | {tr.get('cpc_display') or '—'} | {tr.get('cpm_display') or '—'} |"
+                    )
+                if cb.get("footnote"):
+                    lines.extend(["", f"*{cb['footnote']}*", ""])
+
+        em = c.get("email_report")
+        if em:
+            lines.extend(["## Email — Brevo", ""])
+            if em.get("error"):
+                lines.extend([f"**Error:** {em.get('error')}", ""])
+            else:
+                # Topline
+                lines.extend(["### Topline", ""])
+                for r in em.get("section_0_topline_table", []) or []:
+                    lines.append(f"- **{r.get('label')}:** {r.get('value')}")
+                # Core KPIs
+                s3 = em.get("section_3_core_kpis") or {}
+                if s3.get("rows"):
+                    lines.extend(["", "### Core KPIs", ""])
+                    lines.append("| Metric | How calculated | Value | Benchmark |")
+                    lines.append("| --- | --- | --- | --- |")
+                    for r in s3["rows"]:
+                        lines.append(f"| {r.get('metric')} | {r.get('how_calculated')} | {r.get('value')} | {r.get('benchmark')} |")
+                # Campaign breakdown (full rows now)
+                s4 = em.get("section_4_campaign_breakdown") or {}
+                sub = s4.get("subsection_4_1_broadcast") or {}
+                if sub.get("rows"):
+                    lines.extend(["", "### Campaign breakdown", ""])
+                    lines.append("| Campaign | Sent | Open rate | CTR | CTOR | Unsubs |")
+                    lines.append("| --- | --- | --- | --- | --- | --- |")
+                    for r in sub["rows"]:
+                        lines.append(
+                            f"| {r.get('campaign_name')} | {r.get('sent')} | {r.get('open_rate_pct')} | {r.get('ctr_pct')} | {r.get('ctor_pct')} | {r.get('unsubs')} |"
+                        )
+    lines.append("")
     return "\n".join(lines)
 
 

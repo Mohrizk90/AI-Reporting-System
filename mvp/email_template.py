@@ -29,9 +29,12 @@ def _fmt_pct(v: float | None) -> str:
     return "—" if v is None else f"{v:.2f}%"
 
 
-def _top_campaigns(rows: list[EmailCampaignRow], n: int = 5) -> list[EmailCampaignRow]:
-    # prioritize by delivered then sent
-    return sorted(rows, key=lambda r: (r.delivered or 0, r.sent or 0), reverse=True)[:n]
+def _top_campaigns(rows: list[EmailCampaignRow], n: int | None = None) -> list[EmailCampaignRow]:
+    # prioritize by delivered then sent; default is full table for monthly reporting
+    ordered = sorted(rows, key=lambda r: (r.delivered or 0, r.sent or 0), reverse=True)
+    if n is None:
+        return ordered
+    return ordered[:n]
 
 
 def build_email_report_template(ds: EmailDataset, ai_block: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -89,7 +92,7 @@ def build_email_report_template(ds: EmailDataset, ai_block: dict[str, Any] | Non
     ]
 
     # Section 4 campaign breakdown — broadcast-like campaigns (classic) or unknown
-    top = _top_campaigns(ds.rows, 5)
+    top = _top_campaigns(ds.rows, None)
     breakdown_rows = []
     for r in top:
         breakdown_rows.append(

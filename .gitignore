@@ -1,4 +1,6 @@
 .env
+google_gsc_token.json
+monthly_report_config.json
 output/
 __pycache__/
 *.pyc

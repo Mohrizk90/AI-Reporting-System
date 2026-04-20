@@ -9,6 +9,7 @@ from mvp.email_ai import generate_email_ai_insights
 from mvp.email_kpis import compute_email_aggregate_kpis
 from mvp.email_schema import EmailDataset
 from mvp.email_template import build_email_report_template
+from mvp.monthly_report_sources import build_monthly_report_data_sources_payload
 
 
 def build_email_report_payload(
@@ -46,6 +47,7 @@ def build_email_report_payload(
             "source_path": ds.raw_path,
             "template_id": "Email_Report_Template.docx.pdf",
         },
+        "monthly_report_data_sources": build_monthly_report_data_sources_payload(),
         "scope": {
             "supported_now": [
                 {

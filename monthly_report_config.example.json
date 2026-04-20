@@ -1,0 +1,21 @@
+{
+  "title": "Monthly Marketing Report",
+  "subtitle": "Example run",
+  "prepared_by": "Pedicel Marketing",
+  "output_dir": "output/monthly",
+  "clients": [
+    {
+      "client_id": "isn",
+      "client_name": "ISN Medical",
+      "meta_export_path": "Files/ISN-Medical-Ad_euro-Campaigns-Mar-11-2026-Apr-9-2026.csv",
+      "gsc_site_url": "https://isnmedical.com/"
+    },
+    {
+      "client_id": "yoa",
+      "client_name": "YOA Insurance",
+      "meta_export_path": "PATH/TO/YOA_META_EXPORT.xlsx",
+      "gsc_site_url": "https://yoainsurance.com/"
+    }
+  ]
+}
+

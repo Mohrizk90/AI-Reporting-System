@@ -17,3 +17,5 @@
 
 **Positioning line (stakeholders):**  
 *This MVP automates the Meta-paid slice of the Pedicel Paid Ads report from campaign exports; Google and other channels are intentionally not implemented yet.*
+
+**Monthly report roadmap:** Target integrations (Meta Marketing API, Google Ads, Search Console, LinkedIn, Brevo, file fallback, etc.) are declared on every report as **`monthly_report_data_sources`** — see `mvp/monthly_report_sources.py` and `SOURCE_OF_TRUTH.md` §5.1.

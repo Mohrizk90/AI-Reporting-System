@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>{% if report.paid_ads_report %}{{ report.paid_ads_report.document.report_title }}{% elif report.email_report %}{{ report.email_report.document.report_title }}{% else %}Report{% endif %} — {{ report.meta.client_name }}</title>
+  <title>{% if report.monthly_report %}{{ report.monthly_report.title }}{% elif report.paid_ads_report %}{{ report.paid_ads_report.document.report_title }}{% elif report.email_report %}{{ report.email_report.document.report_title }}{% else %}Report{% endif %}</title>
   <style>
     :root {
       --text: #1a1a1a;
@@ -127,7 +127,179 @@
 </head>
 <body>
 
-{% if report.paid_ads_report %}
+{% if report.monthly_report %}
+{% set mon = report.monthly_report %}
+
+  <header class="doc-header">
+    <h1>{{ mon.title }}</h1>
+    {% if mon.subtitle %}<p class="subtitle">{{ mon.subtitle }}</p>{% endif %}
+    <p class="meta-line">Prepared by: {{ report.meta.prepared_by }} · Generated: {{ report.meta.generated_at }}</p>
+  </header>
+
+  {% if mon.connected_sources %}
+  <div class="scope-box">
+    <strong class="title">Connected in this run</strong>
+    <ul>
+      {% for s in mon.connected_sources %}
+      <li><strong>{{ s.name }}</strong> — {{ s.purpose }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if report.monthly_report_data_sources %}
+  <div class="scope-box">
+    <strong class="title">Monthly report — target data sources</strong>
+    <ul>
+      {% for s in report.monthly_report_data_sources.sources %}
+      <li><strong>{{ s.name }}</strong> — {{ s.purpose }}</li>
+      {% endfor %}
+    </ul>
+    {% if report.monthly_report_data_sources.fallback_note %}
+      <p class="muted" style="margin:0.65rem 0 0 0;">{{ report.monthly_report_data_sources.fallback_note }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% for c in mon.clients %}
+    <section>
+      <h2>Client — {{ c.client_name }} ({{ c.client_id }})</h2>
+
+      {% if c.seo_search_console %}
+        <h3>SEO — Google Search Console</h3>
+        <p class="muted">Property: {{ c.seo_search_console.site_url }} · Period: {{ c.seo_search_console.start_date }} to {{ c.seo_search_console.end_date }}</p>
+        {% if c.seo_search_console.totals %}
+          <table class="data">
+            <tr><th>Clicks</th><th>Impressions</th><th>CTR</th><th>Avg position</th></tr>
+            <tr>
+              <td>{{ c.seo_search_console.totals.clicks }}</td>
+              <td>{{ c.seo_search_console.totals.impressions }}</td>
+              <td>{{ c.seo_search_console.totals.ctr }}</td>
+              <td>{{ c.seo_search_console.totals.position }}</td>
+            </tr>
+          </table>
+        {% endif %}
+      {% endif %}
+
+      {% if c.paid_ads_report %}
+        <h3>Paid ads (Meta export)</h3>
+        {% if c.paid_ads_report.section_1_report_overview.executive_summary %}
+          <div class="executive">
+            <h3>Executive summary</h3>
+            <p style="margin:0;">{{ c.paid_ads_report.section_1_report_overview.executive_summary }}</p>
+          </div>
+        {% endif %}
+
+        {% set s2 = c.paid_ads_report.section_2_facebook_meta_ads %}
+
+        {% if s2.subsection_2_1_core_kpis and s2.subsection_2_1_core_kpis.rows %}
+          <h3>2.1 Core KPIs</h3>
+          <table class="data">
+            <tr>
+              {% for h in s2.subsection_2_1_core_kpis.column_headers %}
+              <th>{{ h }}</th>
+              {% endfor %}
+            </tr>
+            {% for r in s2.subsection_2_1_core_kpis.rows %}
+            <tr>
+              <td>{{ r.metric }}</td>
+              <td>{{ r.what_it_measures }}</td>
+              <td>{{ r.period_value }}{% if r.notes %}<br/><span class="muted">{{ r.notes }}</span>{% endif %}</td>
+              <td>{{ r.benchmark_target }}</td>
+            </tr>
+            {% endfor %}
+          </table>
+        {% endif %}
+
+        {% if s2.subsection_2_3_campaign_breakdown and s2.subsection_2_3_campaign_breakdown.campaigns %}
+          <h3>2.3 Campaign Breakdown</h3>
+          <table class="data">
+            <tr>
+              <th>Campaign</th>
+              <th>Objective</th>
+              <th>Spend</th>
+              <th>Impressions</th>
+              <th>Clicks/Results</th>
+              <th>CTR</th>
+              <th>CPC</th>
+              <th>CPM</th>
+            </tr>
+            {% for r in s2.subsection_2_3_campaign_breakdown.campaigns %}
+            <tr>
+              <td>{{ r.campaign_name }}</td>
+              <td>{{ r.objective }}</td>
+              <td>{{ r.spend_display }}</td>
+              <td>{{ r.impressions_display }}</td>
+              <td>{{ r.clicks_label }}={{ r.clicks_or_results }}</td>
+              <td>{{ r.ctr_display or '—' }}</td>
+              <td>{{ r.cpc_display or '—' }}</td>
+              <td>{{ r.cpm_display or '—' }}</td>
+            </tr>
+            {% endfor %}
+            {% if s2.subsection_2_3_campaign_breakdown.total_row %}
+            {% set tr = s2.subsection_2_3_campaign_breakdown.total_row %}
+            <tr class="total-row">
+              <td><strong>TOTAL</strong></td>
+              <td>—</td>
+              <td>{{ tr.spend_display }}</td>
+              <td>{{ tr.impressions_display }}</td>
+              <td>—</td>
+              <td>{{ tr.ctr_display or '—' }}</td>
+              <td>{{ tr.cpc_display or '—' }}</td>
+              <td>{{ tr.cpm_display or '—' }}</td>
+            </tr>
+            {% endif %}
+          </table>
+          {% if s2.subsection_2_3_campaign_breakdown.footnote %}
+            <p class="footnote">{{ s2.subsection_2_3_campaign_breakdown.footnote }}</p>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+
+      {% if c.email_report %}
+        <h3>Email — Brevo</h3>
+        {% if c.email_report.error %}
+          <p class="excluded"><strong>Not available.</strong> {{ c.email_report.error }}</p>
+        {% else %}
+          <h3>Topline</h3>
+          <table class="data">
+            <tr><th>Metric</th><th>Value</th></tr>
+            {% for r in c.email_report.section_0_topline_table %}
+            <tr><td>{{ r.label }}</td><td>{{ r.value }}</td></tr>
+            {% endfor %}
+          </table>
+
+          <h3>Core KPIs</h3>
+          <table class="data">
+            <tr><th>Metric</th><th>How calculated</th><th>Value</th><th>Benchmark</th></tr>
+            {% for r in c.email_report.section_3_core_kpis.rows %}
+            <tr><td>{{ r.metric }}</td><td>{{ r.how_calculated }}</td><td>{{ r.value }}</td><td>{{ r.benchmark }}</td></tr>
+            {% endfor %}
+          </table>
+
+          {% set sub = c.email_report.section_4_campaign_breakdown.subsection_4_1_broadcast %}
+          {% if sub and sub.rows %}
+            <h3>Campaign breakdown</h3>
+            <table class="data">
+              <tr><th>Campaign</th><th>Sent</th><th>Open rate</th><th>CTR</th><th>CTOR</th><th>Unsubs</th></tr>
+              {% for r in sub.rows %}
+              <tr>
+                <td>{{ r.campaign_name }}</td>
+                <td>{{ r.sent }}</td>
+                <td>{{ r.open_rate_pct }}</td>
+                <td>{{ r.ctr_pct }}</td>
+                <td>{{ r.ctor_pct }}</td>
+                <td>{{ r.unsubs }}</td>
+              </tr>
+              {% endfor %}
+            </table>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+    </section>
+  {% endfor %}
+
+{% elif report.paid_ads_report %}
 {% set pad = report.paid_ads_report %}
 {% set doc = pad.document %}
 

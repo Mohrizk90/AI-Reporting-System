@@ -30,29 +30,25 @@ def ingest_brevo_email_campaigns(
 ) -> EmailDataset:
     """
     MVP approach:
-    - list campaigns
-    - fetch per-campaign globalStats
+    - list campaigns WITH globalStats in the listing response (reduces API calls)
     - classify campaign type: classic→broadcast, trigger→sequence
 
-    Filtering by period is done locally on campaign sentDate if present.
+    Filtering by period uses Brevo list API startDate/endDate where supported.
     """
     cfg = BrevoConfig(api_key=api_key, base_url=base_url)
     c = BrevoClient(cfg)
     warnings: list[str] = []
     rows: list[EmailCampaignRow] = []
     try:
-        for camp in c.list_email_campaigns(limit=limit):
+        start_utc = f"{period_start.isoformat()}T00:00:00.000Z"
+        end_utc = f"{period_end.isoformat()}T23:59:59.999Z"
+        for camp in c.list_email_campaigns(limit=limit, start_date_utc=start_utc, end_date_utc=end_utc, statistics="globalStats"):
             cid = camp.get("id")
             if cid is None:
                 continue
             sent_at = _parse_dt(camp.get("sentDate") or camp.get("scheduledAt"))
-            if sent_at:
-                d = sent_at.date()
-                if d < period_start or d > period_end:
-                    continue
-
-            rep = c.get_email_campaign_report(int(cid))
-            gs = (rep.get("statistics") or {}).get("globalStats") or rep.get("globalStats") or {}
+            # stats may be nested under `statistics.globalStats` in list response
+            gs = (camp.get("statistics") or {}).get("globalStats") or camp.get("globalStats") or {}
 
             # Brevo fields (per docs): sent, delivered, uniqueViews, uniqueClicks, hardBounces, softBounces,
             # unsubscriptions, complaints, etc.
@@ -65,7 +61,7 @@ def ingest_brevo_email_campaigns(
             unsub = gs.get("unsubscriptions")
             complaints = gs.get("complaints")
 
-            typ = rep.get("type") or camp.get("type")
+            typ = camp.get("type")
             if typ == "classic":
                 camp_type = "broadcast"
             elif typ == "trigger":
@@ -76,7 +72,7 @@ def ingest_brevo_email_campaigns(
             rows.append(
                 EmailCampaignRow(
                     campaign_id=str(cid),
-                    campaign_name=str(rep.get("name") or camp.get("name") or f"Campaign {cid}"),
+                    campaign_name=str(camp.get("name") or f"Campaign {cid}"),
                     campaign_type=camp_type,
                     sent_at=sent_at,
                     report_period_start=period_start,
