@@ -14,7 +14,12 @@
       "client_id": "yoa",
       "client_name": "YOA Insurance",
       "meta_export_path": "PATH/TO/YOA_META_EXPORT.xlsx",
-      "gsc_site_url": "https://yoainsurance.com/"
+      "gsc_site_url": "https://yoainsurance.com/",
+      "meta_marketing_api": {
+        "ad_account_id_env": "META_YOA_AD_ACCOUNT_ID",
+        "access_token_env": "META_YOA_ACCESS_TOKEN",
+        "app_id_env": "META_YOA_APP_ID"
+      }
     }
   ]
 }

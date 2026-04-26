@@ -256,6 +256,47 @@
         {% endif %}
       {% endif %}
 
+      {% if c.meta_marketing_api %}
+        <h3>Paid ads — Meta Marketing API</h3>
+        {% if c.meta_marketing_api.error %}
+          <p class="excluded"><strong>Not available.</strong> {{ c.meta_marketing_api.error }}</p>
+        {% else %}
+          <p class="muted">Account: {{ c.meta_marketing_api.ad_account_id }} · Period: {{ c.meta_marketing_api.time_range.since }} to {{ c.meta_marketing_api.time_range.until }} · {{ c.meta_marketing_api.row_count }} row(s)</p>
+          {% if c.meta_marketing_api.totals %}
+            {% set mt = c.meta_marketing_api.totals %}
+            <table class="data">
+              <tr><th>Spend</th><th>Impressions</th><th>Clicks</th><th>CTR</th><th>CPM</th></tr>
+              <tr>
+                <td>${{ "%.2f"|format(mt.spend) }}</td>
+                <td>{{ "{:,d}".format(mt.impressions|int) }}</td>
+                <td>{{ "{:,d}".format(mt.clicks|int) }}</td>
+                <td>{{ "%.2f"|format(mt.ctr * 100) }}%</td>
+                <td>{% if mt.impressions and mt.impressions > 0 %}${{ "%.2f"|format(mt.spend / mt.impressions * 1000) }}{% else %}—{% endif %}</td>
+              </tr>
+            </table>
+          {% endif %}
+          {% if c.meta_marketing_api.campaigns %}
+            <h3>Campaign insights</h3>
+            <table class="data">
+              <tr><th>Campaign</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>Link clicks</th><th>Reach</th><th>CTR</th><th>CPC</th><th>CPM</th></tr>
+              {% for r in c.meta_marketing_api.campaigns %}
+              <tr>
+                <td>{{ r.campaign_name }}</td>
+                <td>${{ "%.2f"|format(r.spend) }}</td>
+                <td>{{ "{:,d}".format(r.impressions|int) }}</td>
+                <td>{{ "{:,d}".format(r.clicks|int) }}</td>
+                <td>{% if r.link_clicks is not none %}{{ r.link_clicks }}{% else %}—{% endif %}</td>
+                <td>{{ "{:,d}".format(r.reach|int) }}</td>
+                <td>{% if r.impressions and r.impressions > 0 %}{{ "%.2f"|format(r.clicks / r.impressions * 100) }}%{% else %}—{% endif %}</td>
+                <td>{% if r.clicks and r.clicks > 0 %}${{ "%.2f"|format(r.spend / r.clicks) }}{% else %}—{% endif %}</td>
+                <td>{% if r.impressions and r.impressions > 0 %}${{ "%.2f"|format(r.spend / r.impressions * 1000) }}{% else %}—{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </table>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+
       {% if c.email_report %}
         <h3>Email — Brevo</h3>
         {% if c.email_report.error %}

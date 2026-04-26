@@ -132,6 +132,122 @@ def _lines_gsc_seo_markdown(report: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _fmt_usd(amount: float) -> str:
+    return f"${amount:,.2f}"
+
+
+def _fmt_pct_from_rate(rate: float) -> str:
+    return f"{rate * 100.0:.2f}%"
+
+
+def _meta_row_ctr(impressions: int, clicks: int) -> str:
+    if impressions <= 0:
+        return "—"
+    return _fmt_pct_from_rate(clicks / impressions)
+
+
+def _meta_row_cpc(spend: float, clicks: int) -> str:
+    if clicks <= 0:
+        return "—"
+    return _fmt_usd(spend / clicks)
+
+
+def _meta_row_cpm(spend: float, impressions: int) -> str:
+    if impressions <= 0:
+        return "—"
+    return _fmt_usd(spend / impressions * 1000.0)
+
+
+def _lines_meta_marketing_text(mm: dict[str, Any]) -> list[str]:
+    if not mm:
+        return []
+    out: list[str] = ["--- Paid ads — Meta Marketing API ---"]
+    if mm.get("error"):
+        out.append(f"  {mm.get('error')}")
+        out.append("")
+        return out
+    tr = mm.get("time_range") or {}
+    out.append(f"  Account: {mm.get('ad_account_id')} · Period: {tr.get('since')} to {tr.get('until')}")
+    tot = mm.get("totals") or {}
+    if tot:
+        out.append(
+            "  Totals: "
+            f"spend={_fmt_usd(float(tot.get('spend') or 0))} "
+            f"impressions={int(tot.get('impressions') or 0)} "
+            f"clicks={int(tot.get('clicks') or 0)} "
+            f"ctr={_fmt_pct_from_rate(float(tot.get('ctr') or 0))} "
+            f"cpm={_meta_row_cpm(float(tot.get('spend') or 0), int(tot.get('impressions') or 0))}"
+        )
+    camps = mm.get("campaigns") or []
+    if camps:
+        out.append("  Campaigns:")
+        for r in camps:
+            name = (r.get("campaign_name") or r.get("campaign_id") or "—")[:80]
+            sp = float(r.get("spend") or 0)
+            imp = int(r.get("impressions") or 0)
+            clk = int(r.get("clicks") or 0)
+            lc = r.get("link_clicks")
+            lc_s = str(lc) if lc is not None else "—"
+            out.append(
+                f"    - {name} | spend={_fmt_usd(sp)} | imp={imp} | clicks={clk} | link_clicks={lc_s} | "
+                f"ctr={_meta_row_ctr(imp, clk)} | cpc={_meta_row_cpc(sp, clk)}"
+            )
+    out.append("")
+    return out
+
+
+def _lines_meta_marketing_markdown(mm: dict[str, Any]) -> list[str]:
+    if not mm:
+        return []
+    lines: list[str] = ["## Paid ads — Meta Marketing API", ""]
+    if mm.get("error"):
+        lines.extend([f"**Error:** {mm.get('error')}", ""])
+        return lines
+    tr = mm.get("time_range") or {}
+    lines.extend(
+        [
+            f"- **Ad account:** `{mm.get('ad_account_id')}`",
+            f"- **Period:** {tr.get('since')} → {tr.get('until')}",
+            f"- **Rows:** {mm.get('row_count', 0)}",
+            "",
+        ]
+    )
+    tot = mm.get("totals") or {}
+    if tot:
+        sp = float(tot.get("spend") or 0)
+        imp = int(tot.get("impressions") or 0)
+        clk = int(tot.get("clicks") or 0)
+        lines.extend(
+            [
+                "### Totals (API)",
+                "",
+                f"- **Spend:** {_fmt_usd(sp)}",
+                f"- **Impressions:** {imp:,}",
+                f"- **Clicks:** {clk:,}",
+                f"- **CTR:** {_fmt_pct_from_rate(float(tot.get('ctr') or 0))}",
+                f"- **CPM:** {_meta_row_cpm(sp, imp)}",
+                "",
+            ]
+        )
+    camps = mm.get("campaigns") or []
+    if camps:
+        lines.extend(["### Campaign insights", "", "| Campaign | Spend | Impressions | Clicks | Link clicks | Reach | CTR | CPC | CPM |", "| --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |"])
+        for r in camps:
+            sp = float(r.get("spend") or 0)
+            imp = int(r.get("impressions") or 0)
+            clk = int(r.get("clicks") or 0)
+            reach = int(r.get("reach") or 0)
+            lc = r.get("link_clicks")
+            lc_s = str(lc) if lc is not None else "—"
+            nm = str(r.get("campaign_name") or r.get("campaign_id") or "—").replace("|", "\\|")
+            lines.append(
+                f"| {nm} | {_fmt_usd(sp)} | {imp:,} | {clk:,} | {lc_s} | {reach:,} | "
+                f"{_meta_row_ctr(imp, clk)} | {_meta_row_cpc(sp, clk)} | {_meta_row_cpm(sp, imp)} |"
+            )
+        lines.append("")
+    return lines
+
+
 def report_to_text(report: dict[str, Any]) -> str:
     mon = report.get("monthly_report")
     if mon:
@@ -593,6 +709,24 @@ def _text_from_monthly_report(report: dict[str, Any], mon: dict[str, Any]) -> st
                 lines.append("Executive summary")
                 lines.append(s1["executive_summary"])
                 lines.append("")
+        mm = c.get("meta_marketing_api")
+        if mm:
+            lines.extend(_lines_meta_marketing_text(mm))
+        em = c.get("email_report")
+        if em:
+            lines.append("--- Email — Brevo ---")
+            if em.get("error"):
+                lines.append(f"  {em.get('error')}")
+            else:
+                for r in em.get("section_0_topline_table", []) or []:
+                    lines.append(f"  {r.get('label')}: {r.get('value')}")
+                sub = (em.get("section_4_campaign_breakdown") or {}).get("subsection_4_1_broadcast") or {}
+                for r in sub.get("rows", []) or []:
+                    lines.append(
+                        f"  - {(r.get('campaign_name') or '')[:70]} | sent={r.get('sent')} | "
+                        f"open={r.get('open_rate_pct')} | ctr={r.get('ctr_pct')}"
+                    )
+            lines.append("")
         lines.append("")
     return "\n".join(lines)
 
@@ -671,6 +805,10 @@ def _md_from_monthly_report(report: dict[str, Any], mon: dict[str, Any]) -> str:
                     )
                 if cb.get("footnote"):
                     lines.extend(["", f"*{cb['footnote']}*", ""])
+
+        mm = c.get("meta_marketing_api")
+        if mm:
+            lines.extend(_lines_meta_marketing_markdown(mm))
 
         em = c.get("email_report")
         if em:

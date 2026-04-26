@@ -18,10 +18,18 @@ Config file format (JSON):
       "client_id": "yoa",
       "client_name": "YOA Insurance",
       "meta_export_path": "Files/YOA ....xlsx",
-      "gsc_site_url": "https://yoainsurance.com/"
+      "gsc_site_url": "https://yoainsurance.com/",
+      "meta_marketing_api": {
+        "ad_account_id_env": "META_YOA_AD_ACCOUNT_ID",
+        "access_token_env": "META_YOA_ACCESS_TOKEN",
+        "app_id_env": "META_YOA_APP_ID"
+      }
     }
   ]
 }
+
+Per-client ``meta_marketing_api`` (optional): set ``ad_account_id`` or ``ad_account_id_env``,
+and ``access_token_env`` (Meta token with ``ads_read``). ``app_id_env`` is optional (metadata only).
 """
 
 from __future__ import annotations
@@ -47,10 +55,12 @@ from mvp.paid_ads_template import build_paid_ads_template_report
 from mvp.seo_gsc_report import build_gsc_seo_snapshot
 from mvp.email_ingest_brevo import ingest_brevo_email_campaigns
 from mvp.email_report_model import build_email_report_payload
+from mvp.meta_marketing_api import fetch_campaign_insights
 
 
 def main() -> None:
-    load_dotenv(ROOT / ".env")
+    # Make runs deterministic: values in .env should override any pre-set terminal env vars.
+    load_dotenv(ROOT / ".env", override=True)
     p = argparse.ArgumentParser(description="Build a combined monthly report (multi-client, multi-source)")
     p.add_argument("--config", type=Path, required=True, help="Path to JSON config file")
     args = p.parse_args()
@@ -83,10 +93,44 @@ def main() -> None:
             "purpose": "Paid media performance from Meta Ads Manager export files",
         }
 
+        ps = ds.rows[0].reporting_starts if ds.rows else None
+        pe = ds.rows[0].reporting_ends if ds.rows else None
+
+        meta_mkt = None
+        mm_cfg = c.get("meta_marketing_api")
+        if isinstance(mm_cfg, dict) and ps and pe:
+            acct = (mm_cfg.get("ad_account_id") or "").strip()
+            acct_env = (mm_cfg.get("ad_account_id_env") or "").strip()
+            if not acct and acct_env:
+                acct = (os.environ.get(acct_env) or "").strip()
+            token_env = (mm_cfg.get("access_token_env") or "").strip()
+            token = (os.environ.get(token_env) or "").strip() if token_env else (mm_cfg.get("access_token") or "").strip()
+            app_id_env = (mm_cfg.get("app_id_env") or "").strip()
+            app_id = os.environ.get(app_id_env) if app_id_env else (mm_cfg.get("app_id") or "").strip() or None
+            if acct and token:
+                try:
+                    meta_mkt = fetch_campaign_insights(
+                        ad_account_id=acct,
+                        access_token=token,
+                        since=ps,
+                        until=pe,
+                        app_id=app_id,
+                    )
+                    connected["meta_marketing_api"] = {
+                        "id": "meta_marketing_api",
+                        "name": "Meta Marketing API",
+                        "purpose": "Facebook/Instagram paid media (live campaign insights)",
+                    }
+                except Exception as e:
+                    meta_mkt = {
+                        "source": "meta_marketing_api",
+                        "ad_account_id": acct,
+                        "time_range": {"since": ps.isoformat(), "until": pe.isoformat()},
+                        "error": f"Meta Marketing API failed: {type(e).__name__}: {e}",
+                    }
+
         seo = None
         if gsc_site:
-            ps = ds.rows[0].reporting_starts if ds.rows else None
-            pe = ds.rows[0].reporting_ends if ds.rows else None
             if ps and pe:
                 try:
                     q = search_analytics_query(
@@ -132,8 +176,6 @@ def main() -> None:
         brevo_key = (c.get("brevo_api_key") or "").strip() or (os.environ.get("BREVO_API_KEY") or "").strip()
         if brevo_key:
             try:
-                ps = ds.rows[0].reporting_starts if ds.rows else None
-                pe = ds.rows[0].reporting_ends if ds.rows else None
                 if ps and pe:
                     email_ds = ingest_brevo_email_campaigns(
                         client_id=client_id,
@@ -165,6 +207,7 @@ def main() -> None:
                 "client_id": client_id,
                 "client_name": client_name,
                 "paid_ads_report": paid_ads_report,
+                "meta_marketing_api": meta_mkt,
                 "seo_search_console": seo,
                 "email_report": email_report,
             }
