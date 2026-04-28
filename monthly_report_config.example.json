@@ -19,6 +19,11 @@
         "ad_account_id_env": "META_YOA_AD_ACCOUNT_ID",
         "access_token_env": "META_YOA_ACCESS_TOKEN",
         "app_id_env": "META_YOA_APP_ID"
+      },
+      "meta_pages_instagram": {
+        "page_id_env": "META_PAGE_ID",
+        "access_token_env": "META_YOA_ACCESS_TOKEN",
+        "include_instagram": true
       }
     }
   ]

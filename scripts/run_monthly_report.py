@@ -56,6 +56,7 @@ from mvp.seo_gsc_report import build_gsc_seo_snapshot
 from mvp.email_ingest_brevo import ingest_brevo_email_campaigns
 from mvp.email_report_model import build_email_report_payload
 from mvp.meta_marketing_api import fetch_campaign_insights
+from mvp.meta_pages_instagram_api import fetch_meta_organic_snapshot
 
 
 def main() -> None:
@@ -127,6 +128,38 @@ def main() -> None:
                         "ad_account_id": acct,
                         "time_range": {"since": ps.isoformat(), "until": pe.isoformat()},
                         "error": f"Meta Marketing API failed: {type(e).__name__}: {e}",
+                    }
+
+        meta_org = None
+        mo_cfg = c.get("meta_pages_instagram")
+        if isinstance(mo_cfg, dict) and ps and pe:
+            page_id = (mo_cfg.get("page_id") or "").strip()
+            page_env = (mo_cfg.get("page_id_env") or "").strip()
+            if not page_id and page_env:
+                page_id = (os.environ.get(page_env) or "").strip()
+            token_env = (mo_cfg.get("access_token_env") or "").strip()
+            token = (os.environ.get(token_env) or "").strip() if token_env else (mo_cfg.get("access_token") or "").strip()
+            include_ig = bool(mo_cfg.get("include_instagram", True))
+            if page_id and token:
+                try:
+                    meta_org = fetch_meta_organic_snapshot(
+                        page_id=page_id,
+                        access_token=token,
+                        since=ps,
+                        until=pe,
+                        include_instagram=include_ig,
+                    )
+                    connected["meta_pages_instagram"] = {
+                        "id": "meta_pages_instagram",
+                        "name": "Meta Pages / Instagram APIs",
+                        "purpose": "Organic page/account-level social metrics where applicable",
+                    }
+                except Exception as e:
+                    meta_org = {
+                        "source": "meta_pages_instagram",
+                        "page_id": page_id,
+                        "time_range": {"since": ps.isoformat(), "until": pe.isoformat()},
+                        "error": f"Meta Pages/Instagram fetch failed: {type(e).__name__}: {e}",
                     }
 
         seo = None
@@ -208,6 +241,7 @@ def main() -> None:
                 "client_name": client_name,
                 "paid_ads_report": paid_ads_report,
                 "meta_marketing_api": meta_mkt,
+                "meta_pages_instagram": meta_org,
                 "seo_search_console": seo,
                 "email_report": email_report,
             }

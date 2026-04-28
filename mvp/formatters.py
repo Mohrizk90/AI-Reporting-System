@@ -248,6 +248,78 @@ def _lines_meta_marketing_markdown(mm: dict[str, Any]) -> list[str]:
     return lines
 
 
+def _lines_meta_organic_text(mo: dict[str, Any]) -> list[str]:
+    if not mo:
+        return []
+    out: list[str] = ["--- Organic social — Meta Pages / Instagram ---"]
+    if mo.get("error"):
+        out.append(f"  {mo.get('error')}")
+        out.append("")
+        return out
+    tr = mo.get("time_range") or {}
+    page = mo.get("page") or {}
+    out.append(f"  Page: {page.get('name') or '—'} ({page.get('id') or '—'})")
+    out.append(f"  Period: {tr.get('since')} to {tr.get('until')}")
+    fb = mo.get("facebook_page") or {}
+    totals = fb.get("totals") or {}
+    if totals:
+        out.append("  Facebook Page totals:")
+        for k, v in totals.items():
+            out.append(f"    - {k}: {int(v) if float(v).is_integer() else v}")
+    ig = mo.get("instagram") or {}
+    if ig:
+        if ig.get("error"):
+            out.append(f"  Instagram: {ig.get('error')}")
+        else:
+            out.append(f"  Instagram: {ig.get('username') or ig.get('id') or '—'}")
+            it = ig.get("totals") or {}
+            if it:
+                out.append("  Instagram totals:")
+                for k, v in it.items():
+                    out.append(f"    - {k}: {int(v) if float(v).is_integer() else v}")
+    out.append("")
+    return out
+
+
+def _lines_meta_organic_markdown(mo: dict[str, Any]) -> list[str]:
+    if not mo:
+        return []
+    lines: list[str] = ["## Organic social — Meta Pages / Instagram", ""]
+    if mo.get("error"):
+        lines.extend([f"**Error:** {mo.get('error')}", ""])
+        return lines
+    tr = mo.get("time_range") or {}
+    page = mo.get("page") or {}
+    lines.extend(
+        [
+            f"- **Page:** {page.get('name') or '—'} (`{page.get('id') or '—'}`)",
+            f"- **Period:** {tr.get('since')} → {tr.get('until')}",
+            "",
+        ]
+    )
+    fb = mo.get("facebook_page") or {}
+    totals = fb.get("totals") or {}
+    if totals:
+        lines.extend(["### Facebook Page totals", ""])
+        for k, v in totals.items():
+            vv = int(v) if isinstance(v, (int, float)) and float(v).is_integer() else v
+            lines.append(f"- **{k}:** {vv}")
+        lines.append("")
+    ig = mo.get("instagram") or {}
+    if ig:
+        if ig.get("error"):
+            lines.extend(["### Instagram", "", f"**Error:** {ig.get('error')}", ""])
+        else:
+            lines.extend(["### Instagram totals", ""])
+            lines.append(f"- **Account:** `{ig.get('username') or ig.get('id') or '—'}`")
+            it = ig.get("totals") or {}
+            for k, v in it.items():
+                vv = int(v) if isinstance(v, (int, float)) and float(v).is_integer() else v
+                lines.append(f"- **{k}:** {vv}")
+            lines.append("")
+    return lines
+
+
 def report_to_text(report: dict[str, Any]) -> str:
     mon = report.get("monthly_report")
     if mon:
@@ -712,6 +784,9 @@ def _text_from_monthly_report(report: dict[str, Any], mon: dict[str, Any]) -> st
         mm = c.get("meta_marketing_api")
         if mm:
             lines.extend(_lines_meta_marketing_text(mm))
+        mo = c.get("meta_pages_instagram")
+        if mo:
+            lines.extend(_lines_meta_organic_text(mo))
         em = c.get("email_report")
         if em:
             lines.append("--- Email — Brevo ---")
@@ -809,6 +884,9 @@ def _md_from_monthly_report(report: dict[str, Any], mon: dict[str, Any]) -> str:
         mm = c.get("meta_marketing_api")
         if mm:
             lines.extend(_lines_meta_marketing_markdown(mm))
+        mo = c.get("meta_pages_instagram")
+        if mo:
+            lines.extend(_lines_meta_organic_markdown(mo))
 
         em = c.get("email_report")
         if em:

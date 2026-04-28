@@ -297,6 +297,45 @@
         {% endif %}
       {% endif %}
 
+      {% if c.meta_pages_instagram %}
+        <h3>Organic social — Meta Pages / Instagram</h3>
+        {% if c.meta_pages_instagram.error %}
+          <p class="excluded"><strong>Not available.</strong> {{ c.meta_pages_instagram.error }}</p>
+        {% else %}
+          <p class="muted">
+            Page: {{ c.meta_pages_instagram.page.name }} ({{ c.meta_pages_instagram.page.id }}) ·
+            Period: {{ c.meta_pages_instagram.time_range.since }} to {{ c.meta_pages_instagram.time_range.until }}
+          </p>
+
+          {% if c.meta_pages_instagram.facebook_page and c.meta_pages_instagram.facebook_page.totals %}
+            <h3>Facebook Page totals</h3>
+            <table class="data">
+              <tr><th>Metric</th><th>Total</th></tr>
+              {% for k, v in c.meta_pages_instagram.facebook_page.totals.items() %}
+              <tr><td>{{ k }}</td><td>{{ v|int }}</td></tr>
+              {% endfor %}
+            </table>
+          {% endif %}
+
+          {% if c.meta_pages_instagram.instagram %}
+            <h3>Instagram totals</h3>
+            {% if c.meta_pages_instagram.instagram.error %}
+              <p class="excluded"><strong>Not available.</strong> {{ c.meta_pages_instagram.instagram.error }}</p>
+            {% else %}
+              <p class="muted">Account: {{ c.meta_pages_instagram.instagram.username or c.meta_pages_instagram.instagram.id }}</p>
+              {% if c.meta_pages_instagram.instagram.totals %}
+                <table class="data">
+                  <tr><th>Metric</th><th>Total</th></tr>
+                  {% for k, v in c.meta_pages_instagram.instagram.totals.items() %}
+                  <tr><td>{{ k }}</td><td>{{ v|int }}</td></tr>
+                  {% endfor %}
+                </table>
+              {% endif %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      {% endif %}
+
       {% if c.email_report %}
         <h3>Email — Brevo</h3>
         {% if c.email_report.error %}
